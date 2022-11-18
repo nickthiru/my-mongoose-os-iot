@@ -14,10 +14,10 @@ load('api_watson.js');
 let btn = Cfg.get('board.btn1.pin');              // Built-in button GPIO
 let led = Cfg.get('board.led1.pin');              // Built-in LED GPIO number
 let onhi = Cfg.get('board.led1.active_high');     // LED on when high?
-let state = {on: false, btnCount: 0, uptime: 0};  // Device state
+let state = { on: false, btnCount: 0, uptime: 0 };  // Device state
 let online = false;                               // Connected to the cloud?
 
-let setLED = function(on) {
+let setLED = function (on) {
   let level = onhi ? on : !on;
   GPIO.write(led, level);
   print('LED on ->', on);
@@ -26,12 +26,12 @@ let setLED = function(on) {
 GPIO.set_mode(led, GPIO.MODE_OUTPUT);
 setLED(state.on);
 
-let reportState = function() {
+let reportState = function () {
   Shadow.update(0, state);
 };
 
 // Update state every second, and report to cloud if online
-Timer.set(1000, Timer.REPEAT, function() {
+Timer.set(1000, Timer.REPEAT, function () {
   state.uptime = Sys.uptime();
   state.ram_free = Sys.free_ram();
   print('online:', online, JSON.stringify(state));
@@ -39,7 +39,7 @@ Timer.set(1000, Timer.REPEAT, function() {
 }, null);
 
 // Set up Shadow handler to synchronise device state with the shadow state
-Shadow.addHandler(function(event, obj) {
+Shadow.addHandler(function (event, obj) {
   if (event === 'UPDATE_DELTA') {
     print('GOT DELTA:', JSON.stringify(obj));
     for (let key in obj) {  // Iterate over all keys in delta
@@ -48,7 +48,7 @@ Shadow.addHandler(function(event, obj) {
         setLED(state.on);   // according to the delta
       } else if (key === 'reboot') {
         state.reboot = obj.reboot;      // Reboot button clicked: that
-        Timer.set(750, 0, function() {  // incremented 'reboot' counter
+        Timer.set(750, 0, function () {  // incremented 'reboot' counter
           Sys.reboot(500);                 // Sync and schedule a reboot
         }, null);
       }
@@ -67,7 +67,7 @@ if (btn >= 0) {
     btnPull = GPIO.PULL_DOWN;
     btnEdge = GPIO.INT_EDGE_POS;
   }
-  GPIO.set_button_handler(btn, btnPull, btnEdge, 20, function() {
+  GPIO.set_button_handler(btn, btnPull, btnEdge, 20, function () {
     state.btnCount++;
     let message = JSON.stringify(state);
     let sendMQTT = true;
@@ -83,7 +83,7 @@ if (btn >= 0) {
     }
     if (Watson.isConnected()) {
       print('== Sending Watson event:', message);
-      Watson.sendEventJSON('ev', {d: state});
+      Watson.sendEventJSON('ev', { d: state });
       sendMQTT = false;
     }
     if (Dash.isConnected()) {
@@ -93,7 +93,7 @@ if (btn >= 0) {
     }
     // AWS is handled as plain MQTT since it allows arbitrary topics.
     if (AWS.isConnected() || (MQTT.isConnected() && sendMQTT)) {
-      let topic = 'devices/' + Cfg.get('device.id') + '/events';
+      let topic = 'myTopic';
       print('== Publishing to ' + topic + ':', message);
       MQTT.pub(topic, message, 0 /* QoS */);
     } else if (sendMQTT) {
@@ -102,11 +102,11 @@ if (btn >= 0) {
   }, null);
 }
 
-Event.on(Event.CLOUD_CONNECTED, function() {
+Event.on(Event.CLOUD_CONNECTED, function () {
   online = true;
-  Shadow.update(0, {ram_total: Sys.total_ram()});
+  Shadow.update(0, { ram_total: Sys.total_ram() });
 }, null);
 
-Event.on(Event.CLOUD_DISCONNECTED, function() {
+Event.on(Event.CLOUD_DISCONNECTED, function () {
   online = false;
 }, null);
